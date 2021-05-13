@@ -1,0 +1,765 @@
+---
+title: "Statistical Estimation of Retirement Assets"
+author: 
+  - Wian Boonzaaier
+institute: 
+  - South African Reserve Bank
+  - Methodology and Special Projects Unit
+date: "`r format(Sys.time(), '%B %Y')`"
+#section-titles: false
+output: 
+  beamer_presentation: 
+    theme: Copenhagen
+    toc: false
+    slide_level: 3
+fontsize: 10pt
+---
+
+```{r, warning = F, message = F, echo = F}
+
+source("libraries.R")
+
+```
+
+# Executive Summary
+
+- A quarterly population reference series can be constructed using annual FSCA total assets and quarterly FSD data
+
+    + Quarterly FSD variation scaled to equal annual FSCA levels (Denton-Cholette)
+
+- Population series applied to K-48 subtotal proportions per fund class and per quarter
+
+Assuming that the FSCA database is representative of industry:
+
+- K-48 pension fund assets need to be raised by a factor of $\approx$ **2x**
+
+- K-48 provident fund assets need to be raised by at least **3x**
+
+- K-48 retirement annuity assets need to be raised by a factor of **15x**
+
+Outstanding:
+
+- $\approx$ 2,500 FSD entities need to be mapped to FSCA database
+- Extrapolation of quarters in the absence of FSCA data  
+
+# Background and Motivation
+
+- Current sampling of K-48 not based on established sampling methodologies
+    - Limits inference regarding population parameters
+- Relatively low response rate further complicates picture
+    - No legislative backing
+    - Figures may not be representative
+- In this light, CMFF Unit proceeded to explore supplementary data sources
+    - FSCA Return F (Annual)
+    - FSD Data (Quarterly)
+- Aim is to combine these three sources of data to obtain better quarterly estimates
+    - Chosen method is a function of data richness, time and resource constraints, and anticipated future changes to CMFF surveys
+
+# Description of Data
+
+## K48 - Capital Market and Flow of Funds
+
+### Number of Contributing Entities By Fund Class
+
+- Majority of entities submitting are pension funds
+
+```{r, ent-cmff, warning = F, message = F, echo = F}
+
+load("merge.cmff.fsca.RData")
+
+merge.cmff.fsca %>%
+  group_by(period, fund.class) %>%
+  summarise(fund.count = sum(length(unique(fund.name)))) %>%
+  ggplot(aes(x = period, y = fund.count, group = fund.class, fill = fund.class)) +
+  geom_bar(stat = "identity") +
+  labs(x = "", y = "Number of entities", title = "") +
+  theme(legend.title = element_blank(),
+        legend.position = "top",
+        text = element_text(size = 12, family = "serif"))
+
+```
+
+### Quarterly Total Assets by Main Asset Category
+
+- Assets primarily consist of ordinary shares and fixed interest securities
+
+```{r, tot-ass-cmff, warning = F, message = F, echo = F}
+
+merge.cmff.fsca %>%
+  mutate(value = as.numeric(value,na.rm=T)*10^3,
+         item = str_squish(item)) %>%
+  group_by(period, fund.class) %>%
+  summarise(`XKB2330A - Coin, bankn & dep` = sum(value[item == "K48.0022 - Mutual bank shares" |
+                                                      item == "K48.0026 - Investment in participation mortgage bonds" |
+                                                      item == "K48.0150 - Negotiable certificates of deposit (NCD's) with: Banks" |
+                                                      item == "K48.0051 - Cash and demand deposits: Banknotes and coin" |
+                                                      item == "K48.0052 - Gold coins" |
+                                                      item == "K48.0053 - Demand deposits with banks (incl current banking accounts)" |
+                                                      item == "K48.0054 - Balance with SARB" |
+                                                      item == "K48.0055 - Other deposits with and call loans to: Banks" |
+                                                      item == "K48.0056 - Other deposits incl NCD's with and call loans to: Corporation for Public Deposits (COD)" |
+                                                      item == "K48.0057 - Other deposits incl NCD's with and call loans to: Land Bank" |
+                                                      item == "K48.0058 - Mutual banks (fixed and savings deposits)" |
+                                                      item == "K48.0059 - Local authorities" |
+                                                      item == "K48.0060 - Public Investment Commissioners (PIC)" |
+                                                      item == "K48.0061 - Finance companies" |
+                                                      item == "K48.0062 - Other (specify)"],
+                                              na.rm = T),
+         `XKB2331A - Fix intr sec: Gov` = sum(value[item == "K48.0008 - RSA Govt stock issued inSA" |
+                                                      item == "K48.0162 - RSA Govt stock issued abroad" |
+                                                      item == "K48.0010 - Provincial govt stock - investment in" |
+                                                      item == "K48.0025 - INVESTMENT IN DEFENCE BONDS"],
+                                              na.rm = T),
+         `XKB2332A - Fix intr sec: Loc Auth` = sum(value[item == "K48.0012 - Stock of local authorities in SA - investment in"],
+                                                   na.rm = T),
+         `XKB2333A - Fix intr sec: Pub Entp` = sum(value[item == "K48.0013 - Public corporation stock in SA - investment in" |
+                                                           item == "K48.0013 - Public corporation stock in SA - investment in" |
+                                                           item == "K48.0165 - Non-financial corporations - investment in" |
+                                                           item == "K48.0166 - Financial corporations - investment in"],
+                                                   na.rm = T),
+         `XKB2334A - Fix intr sec: Other` = sum(value[item == "K48.0006 - Foreign securities - investment in" |
+                                                        item == "K48.0007 - Foreign properties - investment in" |
+                                                        item == "K48.0011 - Other guarranteed & approved securities - inv in" |
+                                                        item == "K48.0014 - Listed: company stock, debentures and notes" |
+                                                        item == "K48.0015 - Unlisted: company stock, debentures and notes" |
+                                                        item == "K48.0016 - Listed: preference shares" |
+                                                        item == "K48.0017 - Unlisted: preference shares" |
+                                                        item == "K48.0040 - Bills, bankers acceptances & commercial paper issued by: Government (Treasury bills)" |
+                                                        item == "K48.0041 - Land Bank (Land Bank bills)" |
+                                                        item == "K48.0042 - Local authorities" |
+                                                        item == "K48.0043 - Bills, bankers acceptances & commercial paper issued by: (continued) Non-financial public corporations" |
+                                                        item == "K48.0044 - Government enterprises" |
+                                                        item == "K48.0045 - Financial public corporations" |
+                                                        item == "K48.0046 - Banks" |
+                                                        item == "K48.0047 - Other financial institutions" |
+                                                        item == "K48.0048 - Private sector companies" |
+                                                        item == "K48.0049 - Households (unincorporated enterprises)" |
+                                                        item == "K48.0050 - Foreigners"],
+                                                na.rm = T),
+         `XKB2335A - Ordinary Shares` = sum(value[item == "K48.0018 - Listed: ordinary shares of public corporations" |
+                                                    item == "K48.0019 - Unlisted: ordinary shares of public corporations" |
+                                                    item == "K48.0020 - Listed: ordinary shares of companies" |
+                                                    item == "K48.0021 - Unlisted: ordinary shares of companies" |
+                                                    item == "K48.0023 - Investment in units of: Unit trusts" |
+                                                    item == "K48.0024 - Property trusts"],
+                                            na.rm = T),
+         `XKB2336A - Loans: Mortages` = sum(value[item == "K48.0027 - Farmers: mortgage loans to" |
+                                                    item == "K48.0028 - Other non-corp buss: mortgage loans to" |
+                                                    item == "K48.0029 - Farming companies: mortgage loans to" |
+                                                    item == "K48.0030 - Other corp buss: mortgage loans to" |
+                                                    item == "K48.0031 - Indiv and non-profit instit: mortgage loans to" |
+                                                    item == "K48.0032 - Foreign borrowers: mortgage loans to" |
+                                                    item == "K48.0033 - Others: mortgage loans to"],
+                                            na.rm = T),
+         `XKB2337A - Loans: Public Sector` = sum(value[item == "K48.0034 - Prov govt, universities and other approved instit: other loans to" |
+                                                         item == "K48.0035 - Local authorities: other loans to" |
+                                                         item == "K48.0036 - Non-financial public corp: other loans to"],
+                                                 na.rm = T),
+         `XKB2338A - Loans: Other` = sum(value[item == "K48.0037 - Corp buss: other loans to" |
+                                                 item == "K48.0038 - Indiv & non-profit institutions: other loans to" |
+                                                 item == "K48.0039 - Others: other loans to"],
+                                         na.rm = T),
+         `XKB2339A - Fixed Property` = sum(value[item == "K48.0001 - Lease backs - land and buildings" |
+                                                   item == "K48.0002 - Other property - land and buildings" |
+                                                   item == "K48.0005 - Leverage lease equity participation(s) - Equipment and vehicles"],
+                                           na.rm = T),
+         `XKB2341A - Other Assets` = sum(value[item == "K48.0003 - Lease backs - equipment and vehicles" |
+                                                 item == "K48.0004 - Other equipment and vehicles" |
+                                                 item == "K48.0063 - All other foreign assets not incl under item 6, 7 and 32: Short-term - less than one year" |
+                                                 item == "K48.0064 - Long-term - one year or longer" |
+                                                 item == "K48.0067 - Accrued investment income" |
+                                                 item == "K48.0068 - Sundry debtors" |
+                                                 item == "K48.0069 - Other (specify)" |
+                                                 item == "K48.0170 - Derivative market instruments - other dom assets"],
+                                         na.rm = T),
+         `XKB2340A - Funds inv with ins` = sum(value[item == "K48.0065 - Other domestic assets: Insurance policies:" |
+                                                       item == "K48.0066 - Deposit administration contracts (with insurers)" |
+                                                       item == "K48.0167 - Linked policies" |
+                                                       item == "K48.0168 - Guaranteed policies" |
+                                                       item == "K48.0169 - Other policies"],
+                                               na.rm = T)) %>%
+  group_by(period, fund.class) %>%
+  mutate(`Fixed interest securities` = sum(`XKB2331A - Fix intr sec: Gov`,
+                                           `XKB2332A - Fix intr sec: Loc Auth`,
+                                           `XKB2333A - Fix intr sec: Pub Entp`,
+                                           `XKB2334A - Fix intr sec: Other`,
+                                           na.rm = T),
+         `Loans` = sum(`XKB2336A - Loans: Mortages`,
+                       `XKB2337A - Loans: Public Sector`,
+                       `XKB2338A - Loans: Other`,
+                       na.rm = T),
+         `XKB2342A - Total Assets` = sum(`XKB2330A - Coin, bankn & dep`,
+                                         `Fixed interest securities`,
+                                         `XKB2335A - Ordinary Shares`,
+                                         `Loans`,
+                                         `XKB2339A - Fixed Property`,
+                                         `XKB2341A - Other Assets`,
+                                         `XKB2340A - Funds inv with ins`,
+                                         na.rm = T)) %>%
+  gather(item,value,3:length(.)) %>%
+  filter(item == "XKB2330A - Coin, bankn & dep" |
+           item == "Fixed interest securities" |
+           item == "XKB2335A - Ordinary Shares" |
+           item == "Loans" |
+           item == "XKB2339A - Fixed Property" |
+           item == "XKB2341A - Other Assets" |
+           item == "XKB2340A - Funds inv with ins")  %>%
+  ggplot(aes(x = period, y = value, group = item, fill = item)) +
+  scale_y_continuous(labels = scales::comma) +
+  geom_bar(stat = "identity") +
+  labs(x = "", y = "Rands", title = "") +
+  theme(legend.title = element_blank(),
+        legend.position = "top",
+        text = element_text(size = 12, family = "serif"))
+
+```
+
+### Quarterly Total Assets by Fund Class and Asset Category
+
+- Pension funds dominate majority of asset categories, especially fixed property
+
+```{r, det-ass-cmff, warning = F, message = F, echo = F, fig.height = 6}
+
+merge.cmff.fsca %>%
+  mutate(value = as.numeric(value,na.rm=T)*10^3,
+         item = str_squish(item)) %>%
+  group_by(period, fund.class) %>%
+  summarise(`XKB2330A - Coin, bankn & dep` = sum(value[item == "K48.0022 - Mutual bank shares" |
+                                                      item == "K48.0026 - Investment in participation mortgage bonds" |
+                                                      item == "K48.0150 - Negotiable certificates of deposit (NCD's) with: Banks" |
+                                                      item == "K48.0051 - Cash and demand deposits: Banknotes and coin" |
+                                                      item == "K48.0052 - Gold coins" |
+                                                      item == "K48.0053 - Demand deposits with banks (incl current banking accounts)" |
+                                                      item == "K48.0054 - Balance with SARB" |
+                                                      item == "K48.0055 - Other deposits with and call loans to: Banks" |
+                                                      item == "K48.0056 - Other deposits incl NCD's with and call loans to: Corporation for Public Deposits (COD)" |
+                                                      item == "K48.0057 - Other deposits incl NCD's with and call loans to: Land Bank" |
+                                                      item == "K48.0058 - Mutual banks (fixed and savings deposits)" |
+                                                      item == "K48.0059 - Local authorities" |
+                                                      item == "K48.0060 - Public Investment Commissioners (PIC)" |
+                                                      item == "K48.0061 - Finance companies" |
+                                                      item == "K48.0062 - Other (specify)"],
+                                              na.rm = T),
+         `XKB2331A - Fix intr sec: Gov` = sum(value[item == "K48.0008 - RSA Govt stock issued inSA" |
+                                                      item == "K48.0162 - RSA Govt stock issued abroad" |
+                                                      item == "K48.0010 - Provincial govt stock - investment in" |
+                                                      item == "K48.0025 - INVESTMENT IN DEFENCE BONDS"],
+                                              na.rm = T),
+         `XKB2332A - Fix intr sec: Loc Auth` = sum(value[item == "K48.0012 - Stock of local authorities in SA - investment in"],
+                                                   na.rm = T),
+         `XKB2333A - Fix intr sec: Pub Entp` = sum(value[item == "K48.0013 - Public corporation stock in SA - investment in" |
+                                                           item == "K48.0013 - Public corporation stock in SA - investment in" |
+                                                           item == "K48.0165 - Non-financial corporations - investment in" |
+                                                           item == "K48.0166 - Financial corporations - investment in"],
+                                                   na.rm = T),
+         `XKB2334A - Fix intr sec: Other` = sum(value[item == "K48.0006 - Foreign securities - investment in" |
+                                                        item == "K48.0007 - Foreign properties - investment in" |
+                                                        item == "K48.0011 - Other guarranteed & approved securities - inv in" |
+                                                        item == "K48.0014 - Listed: company stock, debentures and notes" |
+                                                        item == "K48.0015 - Unlisted: company stock, debentures and notes" |
+                                                        item == "K48.0016 - Listed: preference shares" |
+                                                        item == "K48.0017 - Unlisted: preference shares" |
+                                                        item == "K48.0040 - Bills, bankers acceptances & commercial paper issued by: Government (Treasury bills)" |
+                                                        item == "K48.0041 - Land Bank (Land Bank bills)" |
+                                                        item == "K48.0042 - Local authorities" |
+                                                        item == "K48.0043 - Bills, bankers acceptances & commercial paper issued by: (continued) Non-financial public corporations" |
+                                                        item == "K48.0044 - Government enterprises" |
+                                                        item == "K48.0045 - Financial public corporations" |
+                                                        item == "K48.0046 - Banks" |
+                                                        item == "K48.0047 - Other financial institutions" |
+                                                        item == "K48.0048 - Private sector companies" |
+                                                        item == "K48.0049 - Households (unincorporated enterprises)" |
+                                                        item == "K48.0050 - Foreigners"],
+                                                na.rm = T),
+         `XKB2335A - Ordinary Shares` = sum(value[item == "K48.0018 - Listed: ordinary shares of public corporations" |
+                                                    item == "K48.0019 - Unlisted: ordinary shares of public corporations" |
+                                                    item == "K48.0020 - Listed: ordinary shares of companies" |
+                                                    item == "K48.0021 - Unlisted: ordinary shares of companies" |
+                                                    item == "K48.0023 - Investment in units of: Unit trusts" |
+                                                    item == "K48.0024 - Property trusts"],
+                                            na.rm = T),
+         `XKB2336A - Loans: Mortages` = sum(value[item == "K48.0027 - Farmers: mortgage loans to" |
+                                                    item == "K48.0028 - Other non-corp buss: mortgage loans to" |
+                                                    item == "K48.0029 - Farming companies: mortgage loans to" |
+                                                    item == "K48.0030 - Other corp buss: mortgage loans to" |
+                                                    item == "K48.0031 - Indiv and non-profit instit: mortgage loans to" |
+                                                    item == "K48.0032 - Foreign borrowers: mortgage loans to" |
+                                                    item == "K48.0033 - Others: mortgage loans to"],
+                                            na.rm = T),
+         `XKB2337A - Loans: Public Sector` = sum(value[item == "K48.0034 - Prov govt, universities and other approved instit: other loans to" |
+                                                         item == "K48.0035 - Local authorities: other loans to" |
+                                                         item == "K48.0036 - Non-financial public corp: other loans to"],
+                                                 na.rm = T),
+         `XKB2338A - Loans: Other` = sum(value[item == "K48.0037 - Corp buss: other loans to" |
+                                                 item == "K48.0038 - Indiv & non-profit institutions: other loans to" |
+                                                 item == "K48.0039 - Others: other loans to"],
+                                         na.rm = T),
+         `XKB2339A - Fixed Property` = sum(value[item == "K48.0001 - Lease backs - land and buildings" |
+                                                   item == "K48.0002 - Other property - land and buildings" |
+                                                   item == "K48.0005 - Leverage lease equity participation(s) - Equipment and vehicles"],
+                                           na.rm = T),
+         `XKB2341A - Other Assets` = sum(value[item == "K48.0003 - Lease backs - equipment and vehicles" |
+                                                 item == "K48.0004 - Other equipment and vehicles" |
+                                                 item == "K48.0063 - All other foreign assets not incl under item 6, 7 and 32: Short-term - less than one year" |
+                                                 item == "K48.0064 - Long-term - one year or longer" |
+                                                 item == "K48.0067 - Accrued investment income" |
+                                                 item == "K48.0068 - Sundry debtors" |
+                                                 item == "K48.0069 - Other (specify)" |
+                                                 item == "K48.0170 - Derivative market instruments - other dom assets"],
+                                         na.rm = T),
+         `XKB2340A - Funds inv with ins` = sum(value[item == "K48.0065 - Other domestic assets: Insurance policies:" |
+                                                       item == "K48.0066 - Deposit administration contracts (with insurers)" |
+                                                       item == "K48.0167 - Linked policies" |
+                                                       item == "K48.0168 - Guaranteed policies" |
+                                                       item == "K48.0169 - Other policies"],
+                                               na.rm = T)) %>%
+  group_by(period, fund.class) %>%
+  mutate(`Fixed interest securities` = sum(`XKB2331A - Fix intr sec: Gov`,
+                                           `XKB2332A - Fix intr sec: Loc Auth`,
+                                           `XKB2333A - Fix intr sec: Pub Entp`,
+                                           `XKB2334A - Fix intr sec: Other`,
+                                           na.rm = T),
+         `Loans` = sum(`XKB2336A - Loans: Mortages`,
+                       `XKB2337A - Loans: Public Sector`,
+                       `XKB2338A - Loans: Other`,
+                       na.rm = T),
+         `XKB2342A - Total Assets` = sum(`XKB2330A - Coin, bankn & dep`,
+                                         `Fixed interest securities`,
+                                         `XKB2335A - Ordinary Shares`,
+                                         `Loans`,
+                                         `XKB2339A - Fixed Property`,
+                                         `XKB2341A - Other Assets`,
+                                         `XKB2340A - Funds inv with ins`,
+                                         na.rm = T)) %>%
+  gather(item,value,3:length(.)) %>%
+  filter(item == "XKB2330A - Coin, bankn & dep" |
+           item == "Fixed interest securities" |
+           item == "XKB2335A - Ordinary Shares" |
+           item == "Loans" |
+           item == "XKB2339A - Fixed Property" |
+           item == "XKB2341A - Other Assets" |
+           item == "XKB2340A - Funds inv with ins")  %>%
+  ggplot(aes(x = period, y = value, group = fund.class, fill = fund.class)) +
+  scale_y_continuous(labels = scales::comma) +
+  geom_bar(stat = "identity") +
+  labs(x = "", y = "", title = "") +
+  theme(legend.title = element_blank(),
+        legend.position = "top",
+        text = element_text(size = 12, family = "serif")) +
+  facet_wrap(.~item, scales = "free", ncol = 2)
+
+```
+
+## Report F: Financial Sector Conduct Authority
+
+### Number of Contributing Entities by Fund Class (Active)
+
+- Slightly less than 1500 entities submit asset information
+- Pension and provident funds constitute majority of active entities
+
+```{r, tot-ass, warning = F, message = F, echo = F, fig.height=6}
+
+load("df.fsca.RData")
+
+df.fsca %>%
+  mutate(fund.substatus = tolower(fund.substatus)) %>%
+  filter(fund.substatus == "normal active fund") %>%
+  group_by(period, fund.class, fund.substatus) %>%
+  summarise(fund.count = sum(length(unique(fund.name)))) %>%
+  ggplot(aes(x = period, y = fund.count, group = fund.class, fill = fund.class)) +
+  geom_bar(stat = "identity") +
+  labs(x = "", y = "", title = "") +
+  theme(legend.title = element_blank(),
+        legend.position = "top",
+        text = element_text(size = 12, family = "serif")) +
+  facet_wrap(.~fund.substatus, scales = "free", ncol = 2)
+
+```
+
+### Annual Total Assets (Active) by Fund Class
+
+- FSCA total assets much larger than K-48 -> requires raising factor
+- Provident funds and RA distribution differs from K-48
+
+```{r, tot-ass-fsca, warning = F, message = F, echo = F, fig.height=6}
+
+df.fsca %>%
+  filter(fund.substatus == "NORMAL ACTIVE FUND" & item == "TOTAL ASSETS") %>%
+  group_by(period, fund.class) %>%
+  summarise(tot = sum(value,na.rm = T)) %>%
+  ggplot(aes(x = period, y = tot, group = fund.class, fill = fund.class)) +
+  scale_y_continuous(labels = scales::comma) +
+  geom_bar(stat = "identity") +
+  labs(x = "", y = "", title = "") +
+  theme(legend.title = element_blank(),
+        legend.position = "top",
+        text = element_text(size = 12, family = "serif"))
+
+```
+
+## Financial Surveillance Department
+
+### Number of Contributing Entities By Fund Class (Prelim)
+
+**FSD fund classification mapping remains incomplete**
+
+```{r, ent-fsd, warning = F, message = F, echo = F, fig.height = 6}
+
+load("merge.fsd.fsca.RData")
+
+merge.fsd.fsca %>%
+  #filter(!is.na(fund.class)) %>%
+  group_by(period, fund.class) %>%
+  summarise(fund.count = sum(length(unique(fund.name)))) %>%
+  ggplot(aes(x = period, y = fund.count, group = fund.class, fill = fund.class)) +
+  scale_y_continuous(labels = scales::comma) +
+  geom_bar(stat = "identity") +
+  labs(x = "", y = "", title = "") +
+  theme(legend.title = element_blank(),
+        legend.position = "top",
+        text = element_text(size = 12, family = "serif"))
+
+```
+
+### Quarterly Total Assets By Fund Class (Prelim)
+
+**FSD fund classification mapping remains incomplete**
+
+```{r, ass-fsd, warning = F, message = F, echo = F}
+
+merge.fsd.fsca %>%
+  filter((item == "RD_TOTAL ASSETS" | 
+           item == "RF_TOTAL_ASSETS" |
+           item == "RFC_TOTAL_ASSETS")) %>%
+  group_by(period, fund.class) %>%
+  summarise(tot = sum(value,na.rm=T)*10^3) %>%
+  ggplot(aes(x = period, y = tot, group = fund.class, fill = fund.class)) +
+  scale_y_continuous(labels = scales::comma) +
+  geom_bar(stat = "identity") +
+  labs(x = "", y = "", title = "") +
+  theme(legend.title = element_blank(),
+        legend.position = "top",
+        text = element_text(size = 12, family = "serif"))
+
+```
+
+# Estimation Approach (Draft)
+
+## Data Preparation
+
+- Data imported from XLSX files with varying structures
+
+    + Requires transformation to obtain uniform structure
+    
+- Tidy data: Make rows observations, columns are variables
+
+- Fund names are "cleaned" to increase character matching/mapping
+    
+    + Convert to lowercase, remove duplicate white space, remove special characters
+
+## Partial (Fuzzy) Matching
+
+- Entities from K-48 and FSD need to be mapped to FSCA database to obtain accurate fund classification
+
+- Problem: Entity names are not consistent across the three datasets
+    + Some entity names in Afrikaans
+    + The presence of abbreviations (big challenge)
+    
+- Need partial matching algorithm to calculate similarity measure of any given two character phrases
+
+- Jaro-Winkler algo with p = 0.1 was found to be most optimal for company name matching
+
+    + Developed at US Census Bureau
+
+- Partial matches with JW distance > 0.02 need to be manually mapped once
+
+- There are cases where no match is found in FSCA database (mostly FSD entities)
+
+## Temporal Disaggregation
+
+- Once entities have a fund classification, next step is to identify population reference
+
+    + FSCA total assets per fund classification
+    
+- To obtain quarterly series, FSD total assets per fund class are used as indicator variable
+
+- Temporal disaggregation is used to transform quarterly FSD values to be average of annual FSCA total
+
+    + Denton-Cholette method chosen
+    + Quarterly variation of original FSD series is maintained to a large extent
+
+## Population Estimates for K-48 Line Items
+
+- Calculate subtotals for the following K-48 line items across entities per fund class:
+
+    + XKB2330A - Coin, bankn & dep 
+    + Fixed interest securities
+    + XKB2335A - Ordinary Shares
+    + Loans
+    + XKB2339A - Fixed Property
+    + XKB2341A - Other Assets
+    + XKB2340A - Funds inv with ins
+
+- Calculate the contribution of each subtotal as portion of total quarterly assets
+
+- Multiply obtained proportions with estimated quarterly population estimates
+
+# Preliminary Results
+
+## Preliminary Outcome: Pension Funds
+
+- Assets from K-48 for pension funds need to be raised by roughly 2x
+
+```{r, warning = F, message = F, echo = F}
+
+cmff.agg.prop <- merge.cmff.fsca %>%
+  mutate(value = as.numeric(value,na.rm=T)*10^3,
+         item = str_squish(item)) %>%
+  group_by(period, fund.class) %>%
+  summarise(`XKB2330A - Coin, bankn & dep` = sum(value[item == "K48.0022 - Mutual bank shares" |
+                                                         item == "K48.0026 - Investment in participation mortgage bonds" |
+                                                         item == "K48.0150 - Negotiable certificates of deposit (NCD's) with: Banks" |
+                                                         item == "K48.0051 - Cash and demand deposits: Banknotes and coin" |
+                                                         item == "K48.0052 - Gold coins" |
+                                                         item == "K48.0053 - Demand deposits with banks (incl current banking accounts)" |
+                                                         item == "K48.0054 - Balance with SARB" |
+                                                         item == "K48.0055 - Other deposits with and call loans to: Banks" |
+                                                         item == "K48.0056 - Other deposits incl NCD's with and call loans to: Corporation for Public Deposits (COD)" |
+                                                         item == "K48.0057 - Other deposits incl NCD's with and call loans to: Land Bank" |
+                                                         item == "K48.0058 - Mutual banks (fixed and savings deposits)" |
+                                                         item == "K48.0059 - Local authorities" |
+                                                         item == "K48.0060 - Public Investment Commissioners (PIC)" |
+                                                         item == "K48.0061 - Finance companies" |
+                                                         item == "K48.0062 - Other (specify)"],
+                                                 na.rm = T),
+            `XKB2331A - Fix intr sec: Gov` = sum(value[item == "K48.0008 - RSA Govt stock issued inSA" |
+                                                         item == "K48.0162 - RSA Govt stock issued abroad" |
+                                                         item == "K48.0010 - Provincial govt stock - investment in" |
+                                                         item == "K48.0025 - INVESTMENT IN DEFENCE BONDS"],
+                                                 na.rm = T),
+            `XKB2332A - Fix intr sec: Loc Auth` = sum(value[item == "K48.0012 - Stock of local authorities in SA - investment in"],
+                                                      na.rm = T),
+            `XKB2333A - Fix intr sec: Pub Entp` = sum(value[item == "K48.0013 - Public corporation stock in SA - investment in" |
+                                                              item == "K48.0013 - Public corporation stock in SA - investment in" |
+                                                              item == "K48.0165 - Non-financial corporations - investment in" |
+                                                              item == "K48.0166 - Financial corporations - investment in"],
+                                                      na.rm = T),
+            `XKB2334A - Fix intr sec: Other` = sum(value[item == "K48.0006 - Foreign securities - investment in" |
+                                                           item == "K48.0007 - Foreign properties - investment in" |
+                                                           item == "K48.0011 - Other guarranteed & approved securities - inv in" |
+                                                           item == "K48.0014 - Listed: company stock, debentures and notes" |
+                                                           item == "K48.0015 - Unlisted: company stock, debentures and notes" |
+                                                           item == "K48.0016 - Listed: preference shares" |
+                                                           item == "K48.0017 - Unlisted: preference shares" |
+                                                           item == "K48.0040 - Bills, bankers acceptances & commercial paper issued by: Government (Treasury bills)" |
+                                                           item == "K48.0041 - Land Bank (Land Bank bills)" |
+                                                           item == "K48.0042 - Local authorities" |
+                                                           item == "K48.0043 - Bills, bankers acceptances & commercial paper issued by: (continued) Non-financial public corporations" |
+                                                           item == "K48.0044 - Government enterprises" |
+                                                           item == "K48.0045 - Financial public corporations" |
+                                                           item == "K48.0046 - Banks" |
+                                                           item == "K48.0047 - Other financial institutions" |
+                                                           item == "K48.0048 - Private sector companies" |
+                                                           item == "K48.0049 - Households (unincorporated enterprises)" |
+                                                           item == "K48.0050 - Foreigners"],
+                                                   na.rm = T),
+            `XKB2335A - Ordinary Shares` = sum(value[item == "K48.0018 - Listed: ordinary shares of public corporations" |
+                                                       item == "K48.0019 - Unlisted: ordinary shares of public corporations" |
+                                                       item == "K48.0020 - Listed: ordinary shares of companies" |
+                                                       item == "K48.0021 - Unlisted: ordinary shares of companies" |
+                                                       item == "K48.0023 - Investment in units of: Unit trusts" |
+                                                       item == "K48.0024 - Property trusts"],
+                                               na.rm = T),
+            `XKB2336A - Loans: Mortages` = sum(value[item == "K48.0027 - Farmers: mortgage loans to" |
+                                                       item == "K48.0028 - Other non-corp buss: mortgage loans to" |
+                                                       item == "K48.0029 - Farming companies: mortgage loans to" |
+                                                       item == "K48.0030 - Other corp buss: mortgage loans to" |
+                                                       item == "K48.0031 - Indiv and non-profit instit: mortgage loans to" |
+                                                       item == "K48.0032 - Foreign borrowers: mortgage loans to" |
+                                                       item == "K48.0033 - Others: mortgage loans to"],
+                                               na.rm = T),
+            `XKB2337A - Loans: Public Sector` = sum(value[item == "K48.0034 - Prov govt, universities and other approved instit: other loans to" |
+                                                            item == "K48.0035 - Local authorities: other loans to" |
+                                                            item == "K48.0036 - Non-financial public corp: other loans to"],
+                                                    na.rm = T),
+            `XKB2338A - Loans: Other` = sum(value[item == "K48.0037 - Corp buss: other loans to" |
+                                                    item == "K48.0038 - Indiv & non-profit institutions: other loans to" |
+                                                    item == "K48.0039 - Others: other loans to"],
+                                            na.rm = T),
+            `XKB2339A - Fixed Property` = sum(value[item == "K48.0001 - Lease backs - land and buildings" |
+                                                      item == "K48.0002 - Other property - land and buildings" |
+                                                      item == "K48.0005 - Leverage lease equity participation(s) - Equipment and vehicles"],
+                                              na.rm = T),
+            `XKB2341A - Other Assets` = sum(value[item == "K48.0003 - Lease backs - equipment and vehicles" |
+                                                    item == "K48.0004 - Other equipment and vehicles" |
+                                                    item == "K48.0063 - All other foreign assets not incl under item 6, 7 and 32: Short-term - less than one year" |
+                                                    item == "K48.0064 - Long-term - one year or longer" |
+                                                    item == "K48.0067 - Accrued investment income" |
+                                                    item == "K48.0068 - Sundry debtors" |
+                                                    item == "K48.0069 - Other (specify)" |
+                                                    item == "K48.0170 - Derivative market instruments - other dom assets"],
+                                            na.rm = T),
+            `XKB2340A - Funds inv with ins` = sum(value[item == "K48.0065 - Other domestic assets: Insurance policies:" |
+                                                          item == "K48.0066 - Deposit administration contracts (with insurers)" |
+                                                          item == "K48.0167 - Linked policies" |
+                                                          item == "K48.0168 - Guaranteed policies" |
+                                                          item == "K48.0169 - Other policies"],
+                                                  na.rm = T)) %>%
+  group_by(period, fund.class) %>%
+  mutate(`Fixed interest securities` = sum(`XKB2331A - Fix intr sec: Gov`,
+                                           `XKB2332A - Fix intr sec: Loc Auth`,
+                                           `XKB2333A - Fix intr sec: Pub Entp`,
+                                           `XKB2334A - Fix intr sec: Other`,
+                                           na.rm = T),
+         `Loans` = sum(`XKB2336A - Loans: Mortages`,
+                       `XKB2337A - Loans: Public Sector`,
+                       `XKB2338A - Loans: Other`,
+                       na.rm = T),
+         `XKB2342A - Total Assets` = sum(`XKB2330A - Coin, bankn & dep`,
+                                         `Fixed interest securities`,
+                                         `XKB2335A - Ordinary Shares`,
+                                         `Loans`,
+                                         `XKB2339A - Fixed Property`,
+                                         `XKB2341A - Other Assets`,
+                                         `XKB2340A - Funds inv with ins`,
+                                         na.rm = T)) %>%
+  gather(item,value,3:length(.)) %>%
+  filter(item == "XKB2330A - Coin, bankn & dep" |
+           item == "Fixed interest securities" |
+           item == "XKB2335A - Ordinary Shares" |
+           item == "Loans" |
+           item == "XKB2339A - Fixed Property" |
+           item == "XKB2341A - Other Assets" |
+           item == "XKB2340A - Funds inv with ins") %>%
+  group_by(period, fund.class) %>%
+  mutate(prop = value/sum(value,na.rm = T))
+
+
+tot.fsca <- df.fsca %>% # question: what about the fund substatus?
+  filter(item == "TOTAL ASSETS" & fund.substatus == "NORMAL ACTIVE FUND") %>%
+  group_by(period, fund.class) %>%
+  summarise(value = sum(value,na.rm=T))
+
+tot.fsd <- merge.fsd.fsca %>% # question: what about the fund substatus?
+  filter(item == "RD_TOTAL ASSETS" | 
+           item == "RF_TOTAL_ASSETS" |
+           item == "RFC_TOTAL_ASSETS") %>%
+  group_by(period, fund.class) %>%
+  summarise(value = sum(value,na.rm=T)) %>%
+  filter(!is.na(fund.class) & period > as.Date("2012-12-01") & period < as.Date("2018-03-01"))
+
+hdf <- map(unique(tot.fsd$fund.class), 
+           function(x) tot.fsd <- tot.fsd %>%
+             ungroup() %>%
+             filter(fund.class == x) %>% 
+             select(value) %>% 
+             unname() %>%
+             unlist() %>%
+             ts(start = c(2013,1), frequency = 4))
+
+names(hdf) <- unique(tot.fsd$fund.class)
+
+ldf <- map(unique(tot.fsca$fund.class), 
+           function(x) tot.fsca <- tot.fsca %>% 
+             ungroup() %>%
+             filter(fund.class == x) %>% 
+             select(value) %>% 
+             unname() %>%
+             unlist() %>%
+             ts(start = 2013, frequency = 1))
+
+names(ldf) <- unique(tot.fsca$fund.class)
+
+for (i in seq_along(hdf)) {
+  
+  x <- ldf[[i]]
+  y <- hdf[[i]]
+  
+  denton <- td(x ~ 0 + y, to = "quarterly", method = "denton-cholette", conversion = "average")
+  denton <- data.frame(period = as.Date(unique(tot.fsd$period)),
+                       denton = as.matrix(predict(denton)), 
+                       fund.class = names(ldf[i]))
+  assign(paste0(names(ldf)[i]), denton)
+
+}
+
+tmp.denton <- bind_rows(`Pension Fund`,
+                        `Provident Fund`,
+                        `Retirement Annuity`)
+
+
+cmff.agg.prop <- left_join(cmff.agg.prop, 
+                           tmp.denton, 
+                           by = c("period","fund.class")) %>%
+  ungroup() %>%
+  mutate(value.adj = prop*denton,
+         value.adj.factor = value.adj/value) %>%
+  gather(comp,val,c(value,value.adj))
+  
+
+cmff.agg.prop %>%
+  filter(fund.class == "Pension Fund" & period > "2012-12-01") %>%
+  ggplot(aes(x = period, y = val, group = comp, fill = comp)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  facet_wrap(.~item, scales = "free") +
+  labs(x = "", y = "")
+
+
+```
+
+## Preliminary Outcome: Provident Funds
+
+- Provident fund estimates need to be raised by at least 3x 
+
+```{r, warning = F, message = F, echo = F}
+
+cmff.agg.prop %>%
+  filter(fund.class == "Provident Fund" & period > "2012-12-01") %>%
+  ggplot(aes(x = period, y = val, group = comp, fill = comp)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  facet_wrap(.~item, scales = "free") +
+  labs(x = "", y = "")
+
+```
+
+## Preliminary Outcome: Retirement Annuities
+
+- RAs need significant raising (15x-20x)
+
+```{r, warning = F, message = F, echo = F}
+
+cmff.agg.prop %>%
+  filter(fund.class == "Retirement Annuity" & period > "2012-12-01") %>%
+  ggplot(aes(x = period, y = val, group = comp, fill = comp)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  facet_wrap(.~item, scales = "free") +
+  labs(x = "", y = "")
+
+```
+
+# Some Considerations
+
+- Accurate apportioning of K-48 line items dependent on representativeness of raw K-48 returns
+
+- The incomplete state of FSD entity mapping may impact on results presented
+
+    + This should preferably be completed by CMFF staff
+
+- Given lagged release of FSCA data, we need to decide on appropriate extrapolation method
+
+- What about Beneficiaries? Should it be estimated?
+
+- Raising factors vary significantly by quarter and fund classification
+
+    + Highlights to some extent coverage of K-48
+
+- We need to discuss handover process of this procedure

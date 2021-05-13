@@ -1,0 +1,249 @@
+---
+output: html_document
+---
+
+# K-48 Retirement Funds Statistical Re-Weighting
+## Summary Report
+### `r paste0(format(Sys.time(), '%d %B %Y'))`
+
+### Results
+#### Total Assets
+
+
+```{r, warning = F, message = F, echo = F,}
+
+cmff_fin5 %>%
+  ungroup() %>%
+  group_by(period) %>%
+  summarise(orig = sum(tot, na.rm = T)/10^9,
+            revised = sum(tst, na.rm = T)/10^9) %>%
+  gather(key,tot,orig:revised) %>%
+  ggplot(aes(x = period, y = tot, group = key, fill = key)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R billions")
+
+
+```
+
+#### Total Liabilities
+
+```{r, warning = F, message = F, echo = F,}
+
+cmff_finliab5 %>%
+  ungroup() %>%
+  group_by(period) %>%
+  summarise(orig = sum(tot, na.rm = T)/10^9,
+            revised = sum(tst, na.rm = T)/10^9) %>%
+  gather(key,tot,orig:revised) %>%
+  ggplot(aes(x = period, y = tot, group = key, fill = key)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R billions")
+
+
+```
+
+#### Total Assets by Fund Classification
+
+```{r, warning = F, message = F, echo = F, fig.height = 10, fig.width = 10}
+
+cmff_fin5 %>%
+  ungroup() %>%
+  group_by(period, fund_class) %>%
+  summarise(orig = sum(tot, na.rm = T)/10^9,
+            revised = sum(tst, na.rm = T)/10^9) %>%
+  gather(key,tot,orig:revised) %>%
+  ggplot(aes(x = period, y = tot, group = key, fill = key)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R billions") +
+  facet_wrap(.~fund_class, scale = "free", ncol = 1)
+
+
+```
+
+#### Total Liabilities by Fund Classification
+
+```{r, warning = F, message = F, echo = F, fig.height = 10, fig.width = 10}
+
+cmff_finliab5 %>%
+  ungroup() %>%
+  group_by(period, fund_class) %>%
+  summarise(orig = sum(tot, na.rm = T)/10^9,
+            revised = sum(tst, na.rm = T)/10^9) %>%
+  gather(key,tot,orig:revised) %>%
+  ggplot(aes(x = period, y = tot, group = key, fill = key)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R billions") +
+  facet_wrap(.~fund_class, scale = "free", ncol = 1)
+
+
+```
+
+#### Total Assets by FSCA Category
+
+```{r, warning = F, message = F, echo = F, fig.height = 30, fig.width = 20}
+
+cmff_fin5 %>%
+  ungroup() %>%
+  group_by(period, fsca_item) %>%
+  summarise(orig = sum(tot, na.rm = T)/10^9,
+            revised = sum(tst, na.rm = T)/10^9) %>%
+  gather(key,tot,orig:revised) %>%
+  ggplot(aes(x = period, y = tot, group = key, fill = key)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R billions") +
+  facet_wrap(.~fsca_item, scale = "free", ncol = 2)
+
+
+```
+
+#### Total Liabilities by FSCA Category
+
+```{r, warning = F, message = F, echo = F, fig.height = 25, fig.width = 20}
+
+cmff_finliab5 %>%
+  ungroup() %>%
+  group_by(period, fsca_item) %>%
+  summarise(orig = sum(tot, na.rm = T)/10^9,
+            revised = sum(tst, na.rm = T)/10^9) %>%
+  gather(key,tot,orig:revised) %>%
+  ggplot(aes(x = period, y = tot, group = key, fill = key)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R billions") +
+  facet_wrap(.~fsca_item, scale = "free", ncol = 2)
+
+
+```
+
+#### Total Assets by FSCA Category and Type
+
+```{r, warning = F, message = F, echo = F, fig.height = 30, fig.width = 20}
+
+cmff_fin5 %>%
+  ungroup() %>%
+  group_by(period, fsca_item, type) %>%
+  summarise(orig = sum(tot, na.rm = T)/10^9,
+            revised = sum(tst, na.rm = T)/10^9) %>%
+  gather(key,tot,orig:revised) %>%
+  ggplot(aes(x = period, y = tot, group = key, fill = key)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R billions") +
+  facet_wrap(.~fsca_item+type, scale = "free", ncol = 2)
+
+
+```
+
+#### Total Assets by Fund Classification and FSCA Category
+
+```{r, warning = F, message = F, echo = F, fig.height = 60, fig.width = 20}
+
+cmff_fin5 %>%
+  ungroup() %>%
+  group_by(period, fund_class, fsca_item) %>%
+  summarise(orig = sum(tot, na.rm = T)/10^6,
+            revised = sum(tst, na.rm = T)/10^6) %>%
+  gather(key,tot,orig:revised) %>%
+  ggplot(aes(x = period, y = tot, group = key, fill = key)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R millions") +
+  facet_wrap(.~fund_class+fsca_item, scale = "free", ncol = 2)
+
+
+```
+
+#### Total Liabilities by Fund Classification and FSCA Category
+
+```{r, warning = F, message = F, echo = F, fig.height = 40, fig.width = 20}
+
+cmff_finliab5 %>%
+  ungroup() %>%
+  group_by(period, fund_class, fsca_item) %>%
+  summarise(orig = sum(tot, na.rm = T)/10^6,
+            revised = sum(tst, na.rm = T)/10^6) %>%
+  gather(key,tot,orig:revised) %>%
+  ggplot(aes(x = period, y = tot, group = key, fill = key)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R millions") +
+  facet_wrap(.~fund_class+fsca_item, scale = "free", ncol = 2)
+
+
+```
+
+#### Total Assets by Fund Classification and FSCA Category and Item
+
+```{r, warning = F, message = F, echo = F, fig.height = 160, fig.width = 20}
+
+cmff_fin5 %>%
+  ungroup() %>%
+  group_by(period, fund_class, fsca_item, item.x) %>%
+  summarise(orig = sum(tot, na.rm = T)/10^6,
+            revised = sum(tst, na.rm = T)/10^6) %>%
+  gather(key,tot,orig:revised) %>%
+  ggplot(aes(x = period, y = tot, group = key, fill = key)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R millions") +
+  facet_wrap(.~fund_class+fsca_item+item.x, scale = "free", ncol = 3)
+
+
+```
+
+#### Total Liabilities by Fund Classification and FSCA Category and Item
+
+```{r, warning = F, message = F, echo = F, fig.height = 60, fig.width = 20}
+
+cmff_finliab5 %>%
+  ungroup() %>%
+  group_by(period, fund_class, fsca_item, item.x) %>%
+  summarise(orig = sum(tot, na.rm = T)/10^6,
+            revised = sum(tst, na.rm = T)/10^6) %>%
+  gather(key,tot,orig:revised) %>%
+  ggplot(aes(x = period, y = tot, group = key, fill = key)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R millions") +
+  facet_wrap(.~fund_class+fsca_item+item.x, scale = "free", ncol = 2)
+
+
+```

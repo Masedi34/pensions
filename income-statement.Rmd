@@ -1,0 +1,176 @@
+---
+output: html_document
+---
+
+# K-48 Retirement Funds Statistical Re-Weighting
+## Summary Report: Income Statement
+### `r paste0(format(Sys.time(), '%d %B %Y'))`
+
+### Results
+#### Total Income Minus Expenditure (Net)
+
+
+```{r, warning = F, message = F, echo = F}
+
+cmff_is_det_prop3 %>%
+    ungroup() %>%
+    group_by(period) %>%
+    summarise(tot = sum(tst, na.rm = T)/10^9) %>%
+  #gather(key,tot,orig:tot) %>%
+  ggplot(aes(x = period, y = tot)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R billions") 
+
+```
+
+#### Total Income Minus Expenditure (Net) Per Fund Class
+
+```{r, warning = F, message = F, echo = F, fig.width= 10}
+
+cmff_is_det_prop3 %>%
+    ungroup() %>%
+    group_by(period, fund_class) %>%
+    summarise(tot = sum(tst, na.rm = T)/10^9) %>%
+  #gather(key,tot,orig:tot) %>%
+  ggplot(aes(x = period, y = tot)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R billions") +
+  facet_wrap(.~fund_class, scales = "free")
+
+
+```
+
+#### Income and Expenditure High Level Categories
+
+```{r, warning = F, message = F, echo = F, fig.height = 10, fig.width = 9, fig.height = 12}
+
+cmff_is_det_prop3 %>%
+    ungroup() %>%
+    group_by(period, k48_class_agg) %>%
+    summarise(tot = sum(tst, na.rm = T)/10^9) %>%
+  #gather(key,tot,orig:tot) %>%
+  ggplot(aes(x = period, y = tot)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R billions") +
+  facet_wrap(.~k48_class_agg, scales = "free", ncol = 2)
+
+
+```
+
+#### Income and Expenditure Lower Level Categories
+
+```{r, warning = F, message = F, echo = F, fig.height = 20, fig.width = 9}
+
+cmff_is_det_prop3 %>%
+    ungroup() %>%
+    group_by(period, k48_class) %>%
+    summarise(tot = sum(tst, na.rm = T)/10^9) %>%
+  #gather(key,tot,orig:tot) %>%
+  ggplot(aes(x = period, y = tot)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R billions") +
+  facet_wrap(.~k48_class, scales = "free", ncol = 2)
+
+
+```
+
+#### Income and Expenditure By Item
+
+```{r, warning = F, message = F, echo = F, fig.height = 60, fig.width = 9}
+
+cmff_is_det_prop3 %>%
+    ungroup() %>%
+    group_by(period, item) %>%
+    summarise(tot = sum(tst, na.rm = T)/10^9) %>%
+  #gather(key,tot,orig:tot) %>%
+  ggplot(aes(x = period, y = tot)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R billions") +
+  facet_wrap(.~item, scales = "free", ncol = 2)
+
+
+```
+
+#### Income and Expenditure by Fund Class and Aggregate Categories
+
+```{r, warning = F, message = F, echo = F, fig.height = 40, fig.width = 9}
+
+cmff_is_det_prop3 %>%
+    ungroup() %>%
+    group_by(period, fund_class,k48_class_agg) %>%
+    summarise(tot = sum(tst, na.rm = T)/10^9) %>%
+  #gather(key,tot,orig:tot) %>%
+  ggplot(aes(x = period, y = tot)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R billions") +
+  facet_wrap(.~fund_class+k48_class_agg, scales = "free", ncol = 2)
+
+
+```
+
+#### Income and Expenditure Per Fund Class and Low Level Categories
+
+```{r, warning = F, message = F, echo = F, fig.height = 70, fig.width = 9}
+
+cmff_is_det_prop3 %>%
+    ungroup() %>%
+    group_by(period, fund_class, k48_class) %>%
+    summarise(tot = sum(tst, na.rm = T)/10^9) %>%
+  #gather(key,tot,orig:tot) %>%
+  ggplot(aes(x = period, y = tot)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R billions") +
+  facet_wrap(.~fund_class+k48_class, scales = "free", ncol = 2)
+
+
+```
+
+#### Income and Expenditure by Fund Class and Item
+
+```{r, warning = F, message = F, echo = F, fig.height = 170, fig.width = 9}
+
+cmff_is_det_prop3 %>%
+    ungroup() %>%
+    group_by(period, fund_class, item) %>%
+    summarise(tot = sum(tst, na.rm = T)/10^9) %>%
+  #gather(key,tot,orig:tot) %>%
+  ggplot(aes(x = period, y = tot)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "",
+       y = "R billions") +
+  facet_wrap(.~fund_class+item, scales = "free", ncol = 2)
+
+
+```
+
