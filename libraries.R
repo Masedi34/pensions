@@ -58,8 +58,3 @@ if(!require(xml2)) {
   library(xml2)
 }
 
-if(!require(mFilter)) {
-  install.packages("mFilter")
-  library(mFilter)
-}
-
